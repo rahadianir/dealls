@@ -2,9 +2,13 @@ package app
 
 import (
 	"context"
+	"log/slog"
+	"os"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"github.com/rahadianir/dealls/internal/config"
+	"github.com/rahadianir/dealls/internal/logger"
 )
 
 func StartServer() {
@@ -14,21 +18,20 @@ func StartServer() {
 	cfg := config.InitConfig(ctx)
 
 	// init common dependencies
+	// init logger
+	logger := logger.InitLogger()
+
 	// init database connection pool
-	pgConfig, err := pgxpool.ParseConfig(cfg.DB.URL)
+	db, err := sqlx.Open("postgres", cfg.DB.URL)
 	if err != nil {
-
+		logger.ErrorContext(ctx, "failed to open db connection", slog.Any("error", err))
+		os.Exit(1)
 	}
-	pgConfig.MaxConns = int32(cfg.DB.MaxConn)
-
-	dbPool, err := pgxpool.NewWithConfig(ctx, pgConfig)
-	if err != nil {
-
-	}
-	defer dbPool.Close()
+	defer db.Close()
 
 	deps := config.CommonDependencies{
-		DBPool: dbPool,
+		DB:     db,
+		Logger: logger,
 	}
 
 	// serve http

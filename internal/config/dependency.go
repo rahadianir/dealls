@@ -1,7 +1,12 @@
 package config
 
-import "github.com/jackc/pgx/v5/pgxpool"
+import (
+	"log/slog"
+
+	"github.com/jmoiron/sqlx"
+)
 
 type CommonDependencies struct {
-	DBPool *pgxpool.Pool
+	DB *sqlx.DB
+	Logger *slog.Logger
 }
