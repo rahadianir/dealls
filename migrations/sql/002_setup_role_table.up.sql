@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS "hr"."roles" (
     "updated_by" VARCHAR
 );
 
-CREATE TABLE IF NOT EXISTS "hr"."user_roles_map" (
+CREATE TABLE IF NOT EXISTS "hr"."user_role_map" (
     "id" UUID PRIMARY KEY,
     "user_id" UUID NOT NULL,
     "role_id" UUID NOT NULL,
