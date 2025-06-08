@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS "hr"."users";
+DROP SCHEMA IF EXISTS "hr";

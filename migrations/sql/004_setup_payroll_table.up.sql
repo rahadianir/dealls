@@ -1,0 +1,53 @@
+CREATE TABLE IF NOT EXISTS "hr"."reimbursements" (
+    "id" UUID PRIMARY KEY,
+    "user_id" UUID NOT NULL,
+    "amount" DECIMAL(12,2) NOT NULL,
+    "description" VARCHAR,
+    "created_at" TIMESTAMPTZ NOT NULL,
+    "updated_at" TIMESTAMPTZ,
+    "deleted_at" TIMESTAMPTZ,
+    "created_by" VARCHAR DEFAULT 'admin',
+    "updated_by" VARCHAR,
+    CONSTRAINT fk_reimbursement_user_id
+        FOREIGN KEY (user_id)
+        REFERENCES hr.users (id)
+);
+
+CREATE TABLE IF NOT EXISTS "hr"."payrolls" (
+    "id" UUID PRIMARY KEY,
+    "period_id" UUID NOT NULL,
+    "total_work_days" INTEGER NOT NULL,
+    "total_salary_paid" DECIMAL(15,2) NOT NULL,
+    "created_at" TIMESTAMPTZ NOT NULL,
+    "updated_at" TIMESTAMPTZ,
+    "deleted_at" TIMESTAMPTZ,
+    "created_by" VARCHAR DEFAULT 'admin',
+    "updated_by" VARCHAR,
+    CONSTRAINT fk_payroll_period_id
+        FOREIGN KEY (period_id)
+        REFERENCES hr.attendance_periods (id)
+);
+
+CREATE TABLE IF NOT EXISTS "hr"."payslips" (
+    "id" UUID PRIMARY KEY,
+    "payroll_id" UUID NOT NULL,
+    "user_id" UUID NOT NULL,
+    "base_salary" DECIMAL(12,2) NOT NULL,
+    "attendance_days" INTEGER NOT NULL,
+    "total_work_days" INTEGER NOT NULL,
+    "overtime_hours" INTEGER NOT NULL,
+    "overtime_bonus" DECIMAL(12,2) NOT NULL,
+    "total_reimbursement" DECIMAL(12,2),
+    "take_home_pay" DECIMAL(12,2) NOT NULL,
+    "created_at" TIMESTAMPTZ NOT NULL,
+    "updated_at" TIMESTAMPTZ,
+    "deleted_at" TIMESTAMPTZ,
+    "created_by" VARCHAR DEFAULT 'admin',
+    "updated_by" VARCHAR,
+    CONSTRAINT fk_payslip_payroll_id
+        FOREIGN KEY (payroll_id)
+        REFERENCES hr.payrolls (id),
+    CONSTRAINT fk_payslip_user_id
+        FOREIGN KEY (user_id)
+        REFERENCES hr.users (id)
+);
