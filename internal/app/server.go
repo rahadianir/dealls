@@ -5,13 +5,12 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/rahadianir/dealls/internal/config"
+	"github.com/rahadianir/dealls/internal/middleware"
 	"github.com/rahadianir/dealls/internal/pkg/logger"
 	"github.com/rahadianir/dealls/internal/pkg/xjwt"
 	"github.com/rahadianir/dealls/internal/user"
@@ -67,16 +66,8 @@ func initRoutes(ctx context.Context, deps *config.CommonDependencies) http.Handl
 
 	r := chi.NewRouter()
 
-	// A good base middleware stack
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-
-	// Set a timeout value on the request context (ctx), that will signal
-	// through ctx.Done() that the request has timed out and further
-	// processing should be stopped.
-	r.Use(middleware.Timeout(60 * time.Second))
+	traceMW := middleware.TracerMiddleware{}
+	r.Use(traceMW.Tracer)
 
 	r.Post("/login", userHandler.Login)
 

@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/rahadianir/dealls/internal/config"
@@ -28,18 +29,23 @@ func NewUserLogic(deps *config.CommonDependencies, userRepo UserRepository, jwtH
 func (logic *UserLogic) Login(ctx context.Context, username string, password string) (string, error) {
 	userDetails, err := logic.userRepo.GetUserDetailsByUsername(ctx, username)
 	if err != nil {
-		// do something
+		if errors.Is(err, xerror.ErrDataNotFound) {
+			logic.deps.Logger.WarnContext(ctx, "username not found", slog.Any("error", err))
+			return "", err
+		}
+
 		return "", err
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(userDetails.Password), []byte(password))
 	if err != nil {
-
-		return "", err
+		logic.deps.Logger.WarnContext(ctx, "invalid password", slog.Any("error", err))
+		return "", xerror.ClientError{Err: fmt.Errorf("invalid password")}
 	}
 
 	token, err := logic.jwtHelper.GenerateJWT(logic.deps.Config.App.Name, userDetails.ID, logic.deps.Config.App.ExpiryTime, logic.deps.Config.App.SecretKey)
 	if err != nil {
+		logic.deps.Logger.ErrorContext(ctx, "failed to generate JWT", slog.Any("error", err))
 		return token, err
 	}
 
