@@ -40,3 +40,18 @@ CREATE TABLE IF NOT EXISTS "hr"."overtimes" (
         FOREIGN KEY (user_id)
         REFERENCES hr.users (id)
 );
+
+CREATE TABLE IF NOT EXISTS "hr"."reimbursements" (
+    "id" UUID PRIMARY KEY,
+    "user_id" UUID NOT NULL,
+    "amount" DECIMAL(12,2) NOT NULL,
+    "description" VARCHAR,
+    "created_at" TIMESTAMPTZ NOT NULL,
+    "updated_at" TIMESTAMPTZ,
+    "deleted_at" TIMESTAMPTZ,
+    "created_by" VARCHAR DEFAULT 'admin',
+    "updated_by" VARCHAR,
+    CONSTRAINT fk_reimbursement_user_id
+        FOREIGN KEY (user_id)
+        REFERENCES hr.users (id)
+);

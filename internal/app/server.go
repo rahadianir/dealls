@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/rahadianir/dealls/internal/attendance"
 	"github.com/rahadianir/dealls/internal/config"
 	"github.com/rahadianir/dealls/internal/middleware"
 	"github.com/rahadianir/dealls/internal/pkg/logger"
@@ -57,12 +58,15 @@ func initRoutes(ctx context.Context, deps *config.CommonDependencies) http.Handl
 
 	// repository
 	userRepo := user.NewUserRepository(deps)
+	attRepo := attendance.NewAttendanceRepository(deps)
 
 	// logic
 	userLogic := user.NewUserLogic(deps, *userRepo, &jwtHelper)
+	attLogic := attendance.NewAttendanceLogic(deps, *attRepo)
 
 	// handler
 	userHandler := user.NewUserHandler(deps, *userLogic)
+	attHandler := attendance.NewAttendanceHandler(deps, *attLogic)
 
 	r := chi.NewRouter()
 
@@ -70,6 +74,8 @@ func initRoutes(ctx context.Context, deps *config.CommonDependencies) http.Handl
 	r.Use(traceMW.Tracer)
 
 	r.Post("/login", userHandler.Login)
+
+	r.Post("/attendance", attHandler.SubmitAttendance)
 
 	return r
 }
