@@ -10,9 +10,18 @@ type SQLUser struct {
 	Username  sql.NullString
 	Password  sql.NullString
 	Salary    sql.NullFloat64
-	CreatedAt sql.NullTime
-	UpdatedAt sql.NullTime
-	DeletedAt sql.NullTime
-	CreatedBy sql.NullString
-	UpdatedBy sql.NullString
+	CreatedAt sql.NullTime   `db:"created_at"`
+	UpdatedAt sql.NullTime   `db:"updated_at"`
+	DeletedAt sql.NullTime   `db:"deleted_at"`
+	CreatedBy sql.NullString `db:"created_by"`
+	UpdatedBy sql.NullString `db:"updated_by"`
+}
+
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type LoginResponse struct {
+	Token string `json:"token"`
 }

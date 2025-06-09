@@ -7,6 +7,7 @@ import (
 )
 
 type CommonDependencies struct {
-	DB *sqlx.DB
+	Config *Config
+	DB     *sqlx.DB
 	Logger *slog.Logger
 }

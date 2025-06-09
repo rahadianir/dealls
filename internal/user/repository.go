@@ -8,7 +8,7 @@ import (
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/rahadianir/dealls/internal/config"
 	"github.com/rahadianir/dealls/internal/models"
-	"github.com/rahadianir/dealls/internal/xerror"
+	"github.com/rahadianir/dealls/internal/pkg/xerror"
 )
 
 type UserRepository struct {
@@ -28,7 +28,7 @@ func (repo *UserRepository) GetUserDetailsByUsername(ctx context.Context, userna
 		Where(
 			sq.And(
 				sq.Equal(`username`, username),
-				sq.IsNotNull(`deleted_at`),
+				sq.IsNull(`deleted_at`),
 			),
 		)
 	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
@@ -57,4 +57,54 @@ func (repo *UserRepository) GetUserDetailsByUsername(ctx context.Context, userna
 	}
 
 	return user, nil
+}
+
+func (repo *UserRepository) GetUserRolesbyID(ctx context.Context, userID string) ([]string, error) {
+	sq := sqlbuilder.NewSelectBuilder()
+	sq.Select(`id`, `role_id`).
+		From(`hr.user_role_map`).
+		Where(
+			sq.And(
+				sq.Equal(`user_id`, userID),
+				sq.IsNull(`deleted_at`),
+			),
+		)
+	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
+
+	var result []string
+	err := repo.deps.DB.QueryRowxContext(ctx, q, args...).StructScan(&result)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return result, xerror.ErrDataNotFound
+		}
+
+		return result, err
+	}
+
+	return result, nil
+}
+
+func (repo *UserRepository) GetAdminRole(ctx context.Context) (string, error) {
+	sq := sqlbuilder.NewSelectBuilder()
+	sq.Select(`id`).
+		From(`hr.roles`).
+		Where(
+			sq.And(
+				sq.Equal(`name`, `admin`),
+				sq.IsNull(`deleted_at`),
+			),
+		)
+	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
+
+	var result string
+	err := repo.deps.DB.QueryRowxContext(ctx, q, args...).StructScan(&result)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return result, xerror.ErrDataNotFound
+		}
+
+		return result, err
+	}
+
+	return result, nil
 }
