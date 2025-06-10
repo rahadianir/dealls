@@ -2,12 +2,15 @@ package payroll
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/rahadianir/dealls/internal/config"
+	"github.com/rahadianir/dealls/internal/pkg/dbhelper"
 )
 
 type PayrollRepository struct {
@@ -22,11 +25,11 @@ func NewPayrollRepository(deps *config.CommonDependencies) *PayrollRepository {
 
 func (repo *PayrollRepository) SetPayrollPeriod(ctx context.Context, start time.Time, end time.Time) error {
 	ins := sqlbuilder.NewInsertBuilder()
-	insertQ, insertArgs := ins.InsertInto(`hr.attendance_period`).
+	insertQ, insertArgs := ins.InsertInto(`hr.attendance_periods`).
 		Cols(`id`, `start_date`, `end_date`, `active`, `created_at`).
-		Values(uuid.NewString(), start, end, true).BuildWithFlavor(sqlbuilder.PostgreSQL)
+		Values(uuid.NewString(), start, end, true, `now()`).BuildWithFlavor(sqlbuilder.PostgreSQL)
 	update := sqlbuilder.NewUpdateBuilder()
-	updateQ, updateArgs := update.Update(`hr.attendance_period`).Set(update.Assign(`active`, false)).BuildWithFlavor(sqlbuilder.PostgreSQL)
+	updateQ, updateArgs := update.Update(`hr.attendance_periods`).Set(update.Assign(`active`, false)).BuildWithFlavor(sqlbuilder.PostgreSQL)
 
 	tx, err := repo.deps.DB.BeginTxx(ctx, nil)
 	if err != nil {
@@ -53,4 +56,38 @@ func (repo *PayrollRepository) SetPayrollPeriod(ctx context.Context, start time.
 	}
 
 	return nil
+}
+
+func (repo *PayrollRepository) GetActivePayrollPeriod(ctx context.Context) (PayrollPeriod, error) {
+	sq := sqlbuilder.NewSelectBuilder()
+	sq.Select(`id`, `start_date`, `end_date`).From(`ht.attendance_periods`).Where(sq.Equal(`active`, true))
+	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
+
+	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)
+
+	var result PayrollPeriod
+	err := tx.QueryRowxContext(ctx, q, args...).StructScan(&result)
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+func (repo *PayrollRepository) IsPayrollCreated(ctx context.Context, periodID string) (bool, error) {
+	q := `SELECT 1 FROM hr.payrolls WHERE period_id = $1`
+
+	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)
+
+	var result sql.NullInt64
+	err := tx.QueryRowxContext(ctx, q, periodID).Scan(&result)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
 }

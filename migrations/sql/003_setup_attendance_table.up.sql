@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS "hr"."attendance_periods" (
     "id" UUID PRIMARY KEY,
-    "start_date" TIMESTAMPTZ NOT NULL,
-    "end_date" TIMESTAMPTZ NOT NULL,
+    "start_date" DATE NOT NULL,
+    "end_date" DATE NOT NULL,
     "active" BOOL DEFAULT true,
     "created_at" TIMESTAMPTZ NOT NULL,
     "updated_at" TIMESTAMPTZ,

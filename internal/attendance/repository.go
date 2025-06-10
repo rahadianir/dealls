@@ -4,11 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/rahadianir/dealls/internal/config"
+	"github.com/rahadianir/dealls/internal/models"
+	"github.com/rahadianir/dealls/internal/pkg/dbhelper"
 )
 
 type AttendanceRepository struct {
@@ -122,4 +125,76 @@ func (repo *AttendanceRepository) SubmitReimbursement(ctx context.Context, userI
 	}
 
 	return nil
+}
+
+func (repo *AttendanceRepository) GetAllUserAttendancesByPeriod(ctx context.Context, start time.Time, end time.Time) ([]models.Attendance, error) {
+	sq := sqlbuilder.NewSelectBuilder()
+	sq.Select(`count(distinct(user_id, attendance_date)) as count`, `user_id`).From(`hr.attendances`).
+		Where(
+			sq.And(
+				sq.Between(`attendance_date`, start, end),
+				sq.IsNull(`deleted_at`),
+			),
+		).
+		GroupBy(`user_id`)
+	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
+
+	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)
+
+	rows, err := tx.QueryxContext(ctx, q, args...)
+	if err != nil {
+		return []models.Attendance{}, err
+	}
+
+	var temp SQLAttendance
+	var result []models.Attendance
+	for rows.Next() {
+		err := rows.StructScan(&temp)
+		if err != nil {
+			repo.deps.Logger.WarnContext(ctx, "failed to scan attendance data", slog.Any("error", err))
+			continue
+		}
+		result = append(result, models.Attendance{
+			UserID: temp.UserID.String,
+			Count:  int(temp.Count.Int64),
+		})
+	}
+
+	return result, nil
+}
+
+func (repo *AttendanceRepository) GetAllUserOvertimesByPeriod(ctx context.Context, start time.Time, end time.Time) ([]models.Overtime, error) {
+	sq := sqlbuilder.NewSelectBuilder()
+	sq.Select(`sum(hour_count) as count`, `user_id`).From(`hr.overtimes`).
+		Where(
+			sq.And(
+				sq.Between(`date`, start, end),
+				sq.IsNull(`deleted_at`),
+			),
+		).
+		GroupBy(`user_id`)
+	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
+
+	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)
+
+	rows, err := tx.QueryxContext(ctx, q, args...)
+	if err != nil {
+		return []models.Overtime{}, err
+	}
+
+	var temp SQLOvertime
+	var result []models.Overtime
+	for rows.Next() {
+		err := rows.StructScan(&temp)
+		if err != nil {
+			repo.deps.Logger.WarnContext(ctx, "failed to scan overtime data", slog.Any("error", err))
+			continue
+		}
+		result = append(result, models.Overtime{
+			UserID: temp.UserID.String,
+			Count:  int(temp.Count.Int64),
+		})
+	}
+
+	return result, nil
 }

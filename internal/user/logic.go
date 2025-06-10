@@ -68,7 +68,7 @@ func (logic *UserLogic) IsAdmin(ctx context.Context, userID string) (bool, error
 			logic.deps.Logger.WarnContext(ctx, "user has no role", slog.Any("error", err))
 			return false, nil
 		}
-
+		logic.deps.Logger.ErrorContext(ctx, "failed to get user roles by id", slog.Any("error", err))
 		return false, err
 	}
 

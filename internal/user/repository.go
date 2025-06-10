@@ -61,7 +61,7 @@ func (repo *UserRepository) GetUserDetailsByUsername(ctx context.Context, userna
 
 func (repo *UserRepository) GetUserRolesbyID(ctx context.Context, userID string) ([]string, error) {
 	sq := sqlbuilder.NewSelectBuilder()
-	sq.Select(`id`, `role_id`).
+	sq.Select(`role_id`).
 		From(`hr.user_role_map`).
 		Where(
 			sq.And(
@@ -72,13 +72,20 @@ func (repo *UserRepository) GetUserRolesbyID(ctx context.Context, userID string)
 	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
 
 	var result []string
-	err := repo.deps.DB.QueryRowxContext(ctx, q, args...).StructScan(&result)
+	rows, err := repo.deps.DB.QueryxContext(ctx, q, args...)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return result, xerror.ErrDataNotFound
-		}
-
 		return result, err
+	}
+	defer rows.Close()
+
+	var temp string
+	for rows.Next() {
+		rows.Scan(&temp)
+		result = append(result, temp)
+	}
+
+	if len(result) == 0 {
+		return result, xerror.ErrDataNotFound
 	}
 
 	return result, nil
@@ -97,7 +104,7 @@ func (repo *UserRepository) GetAdminRole(ctx context.Context) (string, error) {
 	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
 
 	var result string
-	err := repo.deps.DB.QueryRowxContext(ctx, q, args...).StructScan(&result)
+	err := repo.deps.DB.QueryRowxContext(ctx, q, args...).Scan(&result)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return result, xerror.ErrDataNotFound
