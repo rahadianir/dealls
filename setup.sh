@@ -8,6 +8,7 @@ sleep 5 # waiting for the db to be up
 
 echo "migrating database schema and mock data"
 migrate -path migrations/sql -database=$DB_URL up
+go mod tidy
 go run main.go migrate
 
 echo "setup finished!"

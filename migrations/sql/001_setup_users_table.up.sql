@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS "hr"."users" (
     "name" VARCHAR NOT NULL,
     "username" VARCHAR NOT NULL,
     "password" VARCHAR NOT NULL,
-    "salary" DECIMAL(12,2) NOT NULL,
+    "salary" DECIMAL(20,2) NOT NULL,
     "created_at" TIMESTAMPTZ NOT NULL,
     "updated_at" TIMESTAMPTZ,
     "deleted_at" TIMESTAMPTZ,

@@ -15,6 +15,7 @@ type PayrollPeriod struct {
 	StartDate     time.Time
 	EndDate       time.Time
 	TotalWorkDays int
+	Processed     bool
 }
 
 type SQLPayrollPeriod struct {
@@ -22,6 +23,7 @@ type SQLPayrollPeriod struct {
 	StartDate     sql.NullTime   `db:"start_date"`
 	EndDate       sql.NullTime   `db:"end_date"`
 	TotalWorkDays sql.NullInt64  `db:"total_work_days"`
+	Processed     sql.NullBool   `db:"processed"`
 }
 
 type Reimbursement struct {

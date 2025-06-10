@@ -53,10 +53,6 @@ func (logic *UserLogic) Login(ctx context.Context, username string, password str
 		Token: token,
 	}
 
-	if logic.deps.Config.App.IsDebug {
-		result.UserID = userDetails.ID
-	}
-
 	return result, nil
 }
 

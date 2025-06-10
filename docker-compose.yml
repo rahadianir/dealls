@@ -1,13 +1,4 @@
 services:
-  # app:
-  #   build: .
-  #   ports:
-  #     - "8080:1323"
-  #   environment:
-  #     DATABASE_URL: postgres://postgres:postgres@db:5432/database?sslmode=disable
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
   db:
     platform: linux/x86_64
     image: postgres:14.1-alpine

@@ -7,7 +7,6 @@ import (
 	"log/slog"
 
 	"github.com/huandu/go-sqlbuilder"
-	"github.com/lib/pq"
 	"github.com/rahadianir/dealls/internal/config"
 	"github.com/rahadianir/dealls/internal/models"
 	"github.com/rahadianir/dealls/internal/pkg/dbhelper"
@@ -154,7 +153,7 @@ func (repo *UserRepository) GetUsersSalaryByIDs(ctx context.Context, userIDs []s
 		From(`hr.users`).
 		Where(
 			sq.And(
-				sq.In(`id::text`, pq.Array(userIDs)),
+				sq.In(`id::text`, sqlbuilder.List(userIDs)),
 				sq.IsNull(`deleted_at`),
 			),
 		)

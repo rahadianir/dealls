@@ -84,15 +84,9 @@ func (logic *PayrollLogic) CalculatePayroll(ctx context.Context) error {
 			return err
 		}
 
-		// check whether payroll is already generated
-		isGenerated, err := logic.payrollRepo.IsPayrollCreated(ctx, period.ID)
-		if err != nil {
-			logic.deps.Logger.ErrorContext(ctx, "failed to check whether payroll is created already", slog.Any("error", err))
-			return err
-		}
-
-		if isGenerated {
-			return xerror.LogicError{Err: fmt.Errorf("payroll generated already!")}
+		// check whether payroll is already processed
+		if period.Processed {
+			return xerror.LogicError{Err: fmt.Errorf("payroll processed already!")}
 		}
 
 		// get all users attendances in the period
@@ -197,9 +191,12 @@ func (logic *PayrollLogic) CalculatePayroll(ctx context.Context) error {
 			activeData, ok := activeUserMap[salary.UserID]
 			if !ok {
 				activeUserMap[salary.UserID] = PayrollCalculationData{
-					Salary: salary.Salary,
+					UserID:       salary.UserID,
+					PayrollID:    period.ID,
+					TotalWorkDay: totalWorkDay,
+					Salary:       salary.Salary,
 				}
-				activeUserList = append(activeUserList, salary.UserID)
+
 			} else {
 				activeData.Salary = salary.Salary
 				activeUserMap[salary.UserID] = activeData
@@ -279,10 +276,11 @@ func (logic *PayrollLogic) CalculatePay(ctx context.Context, data PayrollCalcula
 	}
 
 	// calculate prorated salary = (total attendance / total work day) * salary
-	salary := float64(data.AttendanceCount/data.TotalWorkDay) * (data.Salary)
+	salary := float64(data.AttendanceCount/data.TotalWorkDay) * (payslip.BaseSalary)
 
 	// calculate overtime pay = prorated salary per hour * overtime hour
-	overtime := (data.Salary / float64(data.TotalWorkDay) / 8) * float64(data.OvertimeHoursCount)
+	overtime := (payslip.BaseSalary / float64(data.TotalWorkDay) / 8) * float64(data.OvertimeHoursCount)
+	payslip.OvertimePay = overtime
 
 	// calculate reimbursement
 	var reimburseAmount float64
@@ -294,8 +292,12 @@ func (logic *PayrollLogic) CalculatePay(ctx context.Context, data PayrollCalcula
 			Description: r.Desc,
 		})
 	}
+	payslip.TotalReimbursement = reimburseAmount
 
 	payslip.TakeHomePay = salary + overtime + reimburseAmount
+
+	fmt.Println("userID: ", data.UserID)
+	fmt.Println("salary: ", data.Salary)
 
 	return payslip
 }
