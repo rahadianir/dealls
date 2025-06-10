@@ -29,7 +29,7 @@ func (repo *PayrollRepository) SetPayrollPeriod(ctx context.Context, data Payrol
 		Cols(`id`, `start_date`, `end_date`, `active`, `created_at`, `total_work_days`).
 		Values(data.ID, data.StartDate, data.EndDate, true, `now()`, data.TotalWorkDays).BuildWithFlavor(sqlbuilder.PostgreSQL)
 	update := sqlbuilder.NewUpdateBuilder()
-	updateQ, updateArgs := update.Update(`hr.payrolls`).Set(update.Assign(`active`, false)).BuildWithFlavor(sqlbuilder.PostgreSQL)
+	updateQ, updateArgs := update.Update(`hr.payrolls`).Set(update.Assign(`active`, nil)).BuildWithFlavor(sqlbuilder.PostgreSQL)
 
 	tx, err := repo.deps.DB.BeginTxx(ctx, nil)
 	if err != nil {
@@ -126,5 +126,24 @@ func (repo *PayrollRepository) StorePayslip(ctx context.Context, payslip models.
 		return err
 	}
 
+	return nil
+}
+
+func (repo *PayrollRepository) MarkPayrollProcessed(ctx context.Context, id string, totalPaid float64) error {
+	sq := sqlbuilder.NewUpdateBuilder()
+	sq.Update(`hr.payrolls`).Set(
+		sq.Assign(`processed`, true),
+		sq.Assign(`total_salary_paid`, totalPaid),
+	).Where(
+		sq.EQ(`id`, id),
+	)
+	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
+
+	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)
+
+	_, err := tx.ExecContext(ctx, q, args...)
+	if err != nil {
+		return err
+	}
 	return nil
 }
