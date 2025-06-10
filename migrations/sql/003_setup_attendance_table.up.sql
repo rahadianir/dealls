@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS "hr"."reimbursements" (
     "id" UUID PRIMARY KEY,
     "user_id" UUID NOT NULL,
     "amount" DECIMAL(12,2) NOT NULL,
-    "description" VARCHAR,
+    "description" VARCHAR DEFAULT '',
     "created_at" TIMESTAMPTZ NOT NULL,
     "updated_at" TIMESTAMPTZ,
     "deleted_at" TIMESTAMPTZ,

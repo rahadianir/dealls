@@ -44,3 +44,18 @@ func (h *PayrollHandler) SetPayrollPeriod(w http.ResponseWriter, r *http.Request
 		Message: "payroll period set",
 	}, http.StatusCreated)
 }
+
+func (h *PayrollHandler) CalculatePayroll(w http.ResponseWriter, r *http.Request) {
+	err := h.payrollLogic.CalculatePayroll(r.Context())
+	if err != nil {
+		xhttp.SendJSONResponse(w, xhttp.BaseResponse{
+			Error:   err.Error(),
+			Message: "failed to calculate payroll in active period",
+		}, http.StatusBadRequest)
+		return
+	}
+
+	xhttp.SendJSONResponse(w, xhttp.BaseResponse{
+		Message: "payroll in active period calculated",
+	}, http.StatusCreated)
+}

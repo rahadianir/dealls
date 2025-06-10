@@ -36,7 +36,7 @@ func InitConfig(ctx context.Context) *Config {
 			Version:      "1.0.0",
 			IsDebug:      getEnvBool("IS_DEBUG_MODE", false),
 
-			ExpiryTime:   time.Duration(10 * time.Minute),
+			ExpiryTime:   time.Duration(10 * time.Hour),
 			JWTSecretKey: "secret",
 		},
 		DB: &DB{

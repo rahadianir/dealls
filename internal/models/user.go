@@ -14,3 +14,8 @@ type User struct {
 	CreatedBy string
 	UpdatedBy string
 }
+
+type UserSalary struct {
+	UserID string
+	Salary float64
+}

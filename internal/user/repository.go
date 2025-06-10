@@ -4,10 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 
 	"github.com/huandu/go-sqlbuilder"
+	"github.com/lib/pq"
 	"github.com/rahadianir/dealls/internal/config"
 	"github.com/rahadianir/dealls/internal/models"
+	"github.com/rahadianir/dealls/internal/pkg/dbhelper"
 	"github.com/rahadianir/dealls/internal/pkg/xerror"
 )
 
@@ -111,6 +114,71 @@ func (repo *UserRepository) GetAdminRole(ctx context.Context) (string, error) {
 		}
 
 		return result, err
+	}
+
+	return result, nil
+}
+
+func (repo *UserRepository) IsAdmin(ctx context.Context, userID string) (bool, error) {
+	// get user roles
+	roleIDs, err := repo.GetUserRolesbyID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, xerror.ErrDataNotFound) {
+			repo.deps.Logger.WarnContext(ctx, "user has no role", slog.Any("error", err))
+			return false, nil
+		}
+		repo.deps.Logger.ErrorContext(ctx, "failed to get user roles by id", slog.Any("error", err))
+		return false, err
+	}
+
+	// get admin role
+	adminRoleID, err := repo.GetAdminRole(ctx)
+	if err != nil {
+		repo.deps.Logger.ErrorContext(ctx, "failed to fetch admin role ID", slog.Any("error", err))
+		return false, err
+	}
+
+	// match user roles with admin role
+	for _, id := range roleIDs {
+		if id == adminRoleID {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (repo *UserRepository) GetUsersSalaryByIDs(ctx context.Context, userIDs []string) ([]models.UserSalary, error) {
+	sq := sqlbuilder.NewSelectBuilder()
+	sq.Select(`id`, `salary`).
+		From(`hr.users`).
+		Where(
+			sq.And(
+				sq.In(`id::text`, pq.Array(userIDs)),
+				sq.IsNull(`deleted_at`),
+			),
+		)
+	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
+
+	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)
+
+	rows, err := tx.QueryxContext(ctx, q, args...)
+	if err != nil {
+		return []models.UserSalary{}, err
+	}
+
+	var temp SQLUserSalary
+	var result []models.UserSalary
+	for rows.Next() {
+		err := rows.StructScan(&temp)
+		if err != nil {
+			repo.deps.Logger.WarnContext(ctx, "failed to scan user salary", slog.Any("error", err))
+		}
+
+		result = append(result, models.UserSalary{
+			UserID: temp.ID.String,
+			Salary: temp.Salary.Float64,
+		})
 	}
 
 	return result, nil

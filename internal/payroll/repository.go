@@ -60,7 +60,7 @@ func (repo *PayrollRepository) SetPayrollPeriod(ctx context.Context, start time.
 
 func (repo *PayrollRepository) GetActivePayrollPeriod(ctx context.Context) (PayrollPeriod, error) {
 	sq := sqlbuilder.NewSelectBuilder()
-	sq.Select(`id`, `start_date`, `end_date`).From(`ht.attendance_periods`).Where(sq.Equal(`active`, true))
+	sq.Select(`id`, `start_date`, `end_date`).From(`hr.attendance_periods`).Where(sq.Equal(`active`, true))
 	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
 
 	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)

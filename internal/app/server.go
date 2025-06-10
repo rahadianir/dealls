@@ -100,7 +100,7 @@ func initRoutes(deps *config.CommonDependencies) http.Handler {
 	// logic
 	userLogic := user.NewUserLogic(deps, *userRepo, &jwtHelper)
 	attLogic := attendance.NewAttendanceLogic(deps, *attRepo)
-	payrollLogic := payroll.NewPayrollLogic(deps, *payrollRepo, *userLogic, *attRepo)
+	payrollLogic := payroll.NewPayrollLogic(deps, *payrollRepo, *userRepo, *attRepo)
 
 	// handler
 	userHandler := user.NewUserHandler(deps, *userLogic)
@@ -122,6 +122,7 @@ func initRoutes(deps *config.CommonDependencies) http.Handler {
 		r.Post("/overtime", attHandler.SubmitOvertime)
 		r.Post("/reimbursement", attHandler.SubmitReimbursement)
 		r.Post("/payroll/period", payrollHandler.SetPayrollPeriod)
+		r.Post("/payroll/calculate", payrollHandler.CalculatePayroll)
 	})
 
 	return r

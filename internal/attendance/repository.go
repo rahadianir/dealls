@@ -198,3 +198,39 @@ func (repo *AttendanceRepository) GetAllUserOvertimesByPeriod(ctx context.Contex
 
 	return result, nil
 }
+
+func (repo *AttendanceRepository) GetAllUserReimbursementsByPeriod(ctx context.Context, start time.Time, end time.Time) ([]models.Reimbursement, error) {
+	sq := sqlbuilder.NewSelectBuilder()
+	sq.Select(`id`, `user_id`, `amount`, `description`).From(`hr.reimbursements`).
+		Where(
+			sq.And(
+				sq.Between(`created_at`, start, end),
+				sq.IsNull(`deleted_at`),
+			),
+		)
+	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
+
+	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)
+	rows, err := tx.QueryxContext(ctx, q, args...)
+	if err != nil {
+		return []models.Reimbursement{}, err
+	}
+
+	var temp models.SQLReimbursement
+	var result []models.Reimbursement
+	for rows.Next() {
+		err := rows.StructScan(&temp)
+		if err != nil {
+			repo.deps.Logger.WarnContext(ctx, "failed to scan reimbursement data", slog.Any("error", err))
+			continue
+		}
+		result = append(result, models.Reimbursement{
+			ID:          temp.ID.String,
+			UserID:      temp.UserID.String,
+			Amount:      temp.Amount.Float64,
+			Description: temp.Description.String,
+		})
+	}
+
+	return result, nil
+}
