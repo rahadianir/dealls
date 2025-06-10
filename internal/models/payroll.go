@@ -10,22 +10,23 @@ type SQLReimbursement struct {
 }
 
 type Reimbursement struct {
-	ID          string  `json:"id"`
-	UserID      string  `json:"user_id"`
-	Amount      float64 `json:"amount"`
-	Description string  `json:"description"`
+	ID          string  `json:"id,omitempty"`
+	UserID      string  `json:"user_id,omitempty"`
+	Amount      float64 `json:"amount,omitempty"`
+	Description string  `json:"description,omitempty"`
 }
 
 type Payslip struct {
-	ID                 string
-	UserID             string
-	PayrollID          string
-	BaseSalary         float64
-	TotalAttendance    int
-	TotalWorkDay       int
-	TotalOvertimeHour  int
-	OvertimePay        float64
-	ReimbursementList  []Reimbursement
-	TotalReimbursement float64
-	TakeHomePay        float64
+	ID                 string          `json:"id"`
+	Name               string          `json:"name"`
+	UserID             string          `json:"user_id"`
+	PayrollID          string          `json:"payroll_id"`
+	BaseSalary         float64         `json:"base_salary"`
+	TotalAttendance    int             `json:"total_attendance"`
+	TotalWorkDay       int             `json:"total_work_day"`
+	TotalOvertimeHour  int             `json:"total_overtime_hour"`
+	OvertimePay        float64         `json:"overtime_bonus"`
+	ReimbursementList  []Reimbursement `json:"reimbursement_list"`
+	TotalReimbursement float64         `json:"total_reimbursement_amount"`
+	TakeHomePay        float64         `json:"take_home_pay"`
 }

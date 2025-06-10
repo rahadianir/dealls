@@ -42,7 +42,7 @@ func (h *PayrollHandler) SetPayrollPeriod(w http.ResponseWriter, r *http.Request
 
 	xhttp.SendJSONResponse(w, xhttp.BaseResponse{
 		Message: "payroll period set",
-	}, http.StatusCreated)
+	}, http.StatusOK)
 }
 
 func (h *PayrollHandler) CalculatePayroll(w http.ResponseWriter, r *http.Request) {
@@ -57,5 +57,45 @@ func (h *PayrollHandler) CalculatePayroll(w http.ResponseWriter, r *http.Request
 
 	xhttp.SendJSONResponse(w, xhttp.BaseResponse{
 		Message: "payroll in active period calculated",
-	}, http.StatusCreated)
+	}, http.StatusOK)
+}
+
+func (h *PayrollHandler) GeneratePayrollSummary(w http.ResponseWriter, r *http.Request) {
+	resp, err := h.payrollLogic.GetPayrollsSummary(r.Context())
+	if err != nil {
+		xhttp.SendJSONResponse(w, xhttp.BaseResponse{
+			Error:   err.Error(),
+			Message: "failed to get payroll summary in active period",
+		}, http.StatusBadRequest)
+		return
+	}
+	xhttp.SendJSONResponse(w, xhttp.BaseResponse{
+		Message: "payroll summary in active period generated",
+		Data:    resp,
+	}, http.StatusOK)
+}
+
+func (h *PayrollHandler) GetUserPayslip(w http.ResponseWriter, r *http.Request) {
+	var payload UserPayslipRequest
+	err := xhttp.BindJSONRequest(r, &payload)
+	if err != nil {
+		xhttp.SendJSONResponse(w, xhttp.BaseResponse{
+			Error:   err.Error(),
+			Message: xerror.ErrBadRequest.Error(),
+		}, http.StatusBadRequest)
+		return
+	}
+
+	data, err := h.payrollLogic.GetUserPayslipByID(r.Context(), payload.UserID)
+	if err != nil {
+		xhttp.SendJSONResponse(w, xhttp.BaseResponse{
+			Error:   err.Error(),
+			Message: "failed to get user payslip summary in active period",
+		}, http.StatusBadRequest)
+		return
+	}
+	xhttp.SendJSONResponse(w, xhttp.BaseResponse{
+		Message: "payslip summary in active period fetched",
+		Data:    data,
+	}, http.StatusOK)
 }

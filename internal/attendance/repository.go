@@ -145,6 +145,7 @@ func (repo *AttendanceRepository) GetAllUserAttendancesByPeriod(ctx context.Cont
 	if err != nil {
 		return []models.Attendance{}, err
 	}
+	defer rows.Close()
 
 	var temp SQLAttendance
 	var result []models.Attendance
@@ -181,6 +182,7 @@ func (repo *AttendanceRepository) GetAllUserOvertimesByPeriod(ctx context.Contex
 	if err != nil {
 		return []models.Overtime{}, err
 	}
+	defer rows.Close()
 
 	var temp SQLOvertime
 	var result []models.Overtime
@@ -215,6 +217,7 @@ func (repo *AttendanceRepository) GetAllUserReimbursementsByPeriod(ctx context.C
 	if err != nil {
 		return []models.Reimbursement{}, err
 	}
+	defer rows.Close()
 
 	var temp models.SQLReimbursement
 	var result []models.Reimbursement

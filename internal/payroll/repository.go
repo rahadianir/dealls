@@ -5,12 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/rahadianir/dealls/internal/config"
 	"github.com/rahadianir/dealls/internal/models"
 	"github.com/rahadianir/dealls/internal/pkg/dbhelper"
+	"github.com/rahadianir/dealls/internal/pkg/xerror"
 )
 
 type PayrollRepository struct {
@@ -60,7 +62,7 @@ func (repo *PayrollRepository) SetPayrollPeriod(ctx context.Context, data Payrol
 
 func (repo *PayrollRepository) GetActivePayrollPeriod(ctx context.Context) (PayrollPeriod, error) {
 	sq := sqlbuilder.NewSelectBuilder()
-	sq.Select(`id`, `start_date`, `end_date`, `total_work_days`, `processed`).From(`hr.payrolls`).Where(sq.Equal(`active`, true))
+	sq.Select(`id`, `start_date`, `end_date`, `total_work_days`, `processed`, `total_salary_paid`).From(`hr.payrolls`).Where(sq.Equal(`active`, true))
 	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
 
 	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)
@@ -72,11 +74,12 @@ func (repo *PayrollRepository) GetActivePayrollPeriod(ctx context.Context) (Payr
 	}
 
 	result := PayrollPeriod{
-		ID:            temp.ID.String,
-		StartDate:     temp.StartDate.Time,
-		EndDate:       temp.EndDate.Time,
-		TotalWorkDays: int(temp.TotalWorkDays.Int64),
-		Processed:     temp.Processed.Bool,
+		ID:              temp.ID.String,
+		StartDate:       temp.StartDate.Time,
+		EndDate:         temp.EndDate.Time,
+		TotalWorkDays:   int(temp.TotalWorkDays.Int64),
+		Processed:       temp.Processed.Bool,
+		TotalSalaryPaid: temp.TotalSalaryPaid.Float64,
 	}
 
 	return result, nil
@@ -146,4 +149,85 @@ func (repo *PayrollRepository) MarkPayrollProcessed(ctx context.Context, id stri
 		return err
 	}
 	return nil
+}
+
+func (repo *PayrollRepository) GetPayslipsSummary(ctx context.Context, payrollID string) ([]models.Payslip, error) {
+	sq := sqlbuilder.NewSelectBuilder()
+	sq.Select(`p.user_id`, `p.take_home_pay`, `u.name`).From(`hr.payslips p `).Join(`hr.users u`, `p.user_id = u.id`).Where(sq.Equal(`p.payroll_id`, payrollID))
+	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
+
+	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)
+
+	rows, err := tx.QueryxContext(ctx, q, args...)
+	if err != nil {
+		return []models.Payslip{}, err
+	}
+	defer rows.Close()
+
+	var temp SQLPayslip
+	var result []models.Payslip
+	for rows.Next() {
+		err := rows.StructScan(&temp)
+		if err != nil {
+			repo.deps.Logger.WarnContext(ctx, "failed to scan payslip summary", slog.Any("error", err))
+			continue
+		}
+
+		result = append(result, models.Payslip{
+			UserID:      temp.UserID.String,
+			Name:        temp.Name.String,
+			TakeHomePay: temp.TakeHomePay.Float64,
+		})
+	}
+
+	return result, nil
+}
+
+func (repo *PayrollRepository) GetUserPayslipByID(ctx context.Context, userID string, payrollID string) (models.Payslip, error) {
+	sq := sqlbuilder.NewSelectBuilder()
+	sq.Select(`p.id`, `u.name`, `user_id`, `p.base_salary`, `attendance_days`, `total_work_days`, `overtime_hours`, `overtime_bonus`, `reimbursement_list`, `total_reimbursement`, `take_home_pay`).
+		From(`hr.payslips p`).Join(`hr.users u`, `p.user_id = u.id`).Where(
+		sq.And(
+			sq.Equal(`user_id`, userID),
+			sq.Equal(`payroll_id`, payrollID),
+		),
+	)
+	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
+
+	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)
+
+	var temp SQLPayslip
+	err := tx.QueryRowxContext(ctx, q, args...).StructScan(&temp)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.Payslip{}, xerror.ErrDataNotFound
+		}
+
+		return models.Payslip{}, err
+	}
+
+	var list []models.Reimbursement
+	if len(temp.ReimbursementList) != 0 {
+		err := json.Unmarshal(temp.ReimbursementList, &list)
+		if err != nil {
+			return models.Payslip{}, fmt.Errorf("failed to unmarshal reimbursement list: %w", err)
+		}
+	}
+
+	result := models.Payslip{
+		ID:                 temp.ID.String,
+		Name:               temp.Name.String,
+		UserID:             temp.UserID.String,
+		PayrollID:          temp.PayrollID.String,
+		BaseSalary:         temp.BaseSalary.Float64,
+		TotalAttendance:    int(temp.TotalAttendance.Int64),
+		TotalWorkDay:       int(temp.TotalWorkDay.Int64),
+		TotalOvertimeHour:  int(temp.TotalOvertimeHour.Int64),
+		OvertimePay:        temp.OvertimePay.Float64,
+		ReimbursementList:  list,
+		TotalReimbursement: temp.TotalReimbursement.Float64,
+		TakeHomePay:        temp.TakeHomePay.Float64,
+	}
+
+	return result, nil
 }

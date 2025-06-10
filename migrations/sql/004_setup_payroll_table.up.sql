@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS "hr"."payslips" (
     "total_work_days" INTEGER DEFAULT 0,
     "overtime_hours" INTEGER DEFAULT 0,
     "overtime_bonus" DECIMAL(20,2) DEFAULT 0,
-    "reimbursement_list" JSONB DEFAULT '{}',
+    "reimbursement_list" JSONB DEFAULT '[{}]',
     "total_reimbursement" DECIMAL(20,2) DEFAULT 0,
     "take_home_pay" DECIMAL(20,2) NOT NULL,
     "created_at" TIMESTAMPTZ NOT NULL,

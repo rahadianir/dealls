@@ -165,6 +165,7 @@ func (repo *UserRepository) GetUsersSalaryByIDs(ctx context.Context, userIDs []s
 	if err != nil {
 		return []models.UserSalary{}, err
 	}
+	defer rows.Close()
 
 	var temp SQLUserSalary
 	var result []models.UserSalary

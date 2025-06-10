@@ -121,8 +121,12 @@ func initRoutes(deps *config.CommonDependencies) http.Handler {
 		r.Post("/attendance", attHandler.SubmitAttendance)
 		r.Post("/overtime", attHandler.SubmitOvertime)
 		r.Post("/reimbursement", attHandler.SubmitReimbursement)
+
 		r.Post("/payroll/period", payrollHandler.SetPayrollPeriod)
 		r.Post("/payroll/calculate", payrollHandler.CalculatePayroll)
+		r.Get("/payroll/summary", payrollHandler.GeneratePayrollSummary)
+
+		r.Get("/payslip", payrollHandler.GetUserPayslip)
 	})
 
 	return r

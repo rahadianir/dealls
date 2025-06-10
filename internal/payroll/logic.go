@@ -202,14 +202,6 @@ func (logic *PayrollLogic) CalculatePayroll(ctx context.Context) error {
 
 		}
 
-		// for id, data := range activeUserMap {
-		// 	fmt.Println("userID: ", id)
-		// 	fmt.Println("salary: ", data.Salary)
-		// 	fmt.Println("attendance count: ", data.AttendanceCount)
-		// 	fmt.Println("overtime hour count: ", data.OvertimeHoursCount)
-		// 	fmt.Println("reimbursement list: ", data.Reimbursements)
-		// }
-
 		// setup worker to calculate payroll
 		// setup wait group for flow control
 		var wg sync.WaitGroup
@@ -304,6 +296,62 @@ func (logic *PayrollLogic) CalculatePay(ctx context.Context, data PayrollCalcula
 	payslip.TakeHomePay = salary + overtime + reimburseAmount
 
 	return payslip
+}
+
+func (logic *PayrollLogic) GetPayrollsSummary(ctx context.Context) (PayslipSummaryResponse, error) {
+	// check admin role of the user
+	userID := xcontext.GetUserIDFromContext(ctx)
+	isAdmin, err := logic.userRepo.IsAdmin(ctx, userID)
+	if err != nil {
+		logic.deps.Logger.ErrorContext(ctx, "failed to check user admin role", slog.Any("error", err))
+		return PayslipSummaryResponse{}, err
+	}
+
+	if !isAdmin {
+		return PayslipSummaryResponse{}, xerror.AuthError{Err: fmt.Errorf("admin only operation")}
+	}
+
+	// get active payroll period
+	period, err := logic.payrollRepo.GetActivePayrollPeriod(ctx)
+	if err != nil {
+		logic.deps.Logger.ErrorContext(ctx, "failed to get active payroll period", slog.Any("error", err))
+		return PayslipSummaryResponse{}, err
+	}
+
+	payslips, err := logic.payrollRepo.GetPayslipsSummary(ctx, period.ID)
+	if err != nil {
+		logic.deps.Logger.ErrorContext(ctx, "failed to get payslips summary", slog.Any("error", err))
+		return PayslipSummaryResponse{}, err
+	}
+
+	var response PayslipSummaryResponse
+	for _, slip := range payslips {
+		response.Payslips = append(response.Payslips, PayslipResponse{
+			UserID:      slip.UserID,
+			TakeHomePay: slip.TakeHomePay,
+			Name:        slip.Name,
+		})
+	}
+	response.TotalTakeHomePay = period.TotalSalaryPaid
+
+	return response, nil
+}
+
+func (logic *PayrollLogic) GetUserPayslipByID(ctx context.Context, userID string) (models.Payslip, error) {
+	// get active payroll period
+	period, err := logic.payrollRepo.GetActivePayrollPeriod(ctx)
+	if err != nil {
+		logic.deps.Logger.ErrorContext(ctx, "failed to get active payroll period", slog.Any("error", err))
+		return models.Payslip{}, err
+	}
+
+	result, err := logic.payrollRepo.GetUserPayslipByID(ctx, userID, period.ID)
+	if err != nil {
+		logic.deps.Logger.ErrorContext(ctx, "failed to get user payslip in active payroll period", slog.Any("error", err))
+		return models.Payslip{}, err
+	}
+
+	return result, nil
 }
 
 func calculateWorkingDays(startTime time.Time, endTime time.Time) int {
