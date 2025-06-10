@@ -3,13 +3,13 @@ package payroll
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"log/slog"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/rahadianir/dealls/internal/config"
+	"github.com/rahadianir/dealls/internal/models"
 	"github.com/rahadianir/dealls/internal/pkg/dbhelper"
 )
 
@@ -23,13 +23,13 @@ func NewPayrollRepository(deps *config.CommonDependencies) *PayrollRepository {
 	}
 }
 
-func (repo *PayrollRepository) SetPayrollPeriod(ctx context.Context, start time.Time, end time.Time) error {
+func (repo *PayrollRepository) SetPayrollPeriod(ctx context.Context, data PayrollPeriod) error {
 	ins := sqlbuilder.NewInsertBuilder()
-	insertQ, insertArgs := ins.InsertInto(`hr.attendance_periods`).
-		Cols(`id`, `start_date`, `end_date`, `active`, `created_at`).
-		Values(uuid.NewString(), start, end, true, `now()`).BuildWithFlavor(sqlbuilder.PostgreSQL)
+	insertQ, insertArgs := ins.InsertInto(`hr.payrolls`).
+		Cols(`id`, `start_date`, `end_date`, `active`, `created_at`, `total_work_days`).
+		Values(data.ID, data.StartDate, data.EndDate, true, `now()`, data.TotalWorkDays).BuildWithFlavor(sqlbuilder.PostgreSQL)
 	update := sqlbuilder.NewUpdateBuilder()
-	updateQ, updateArgs := update.Update(`hr.attendance_periods`).Set(update.Assign(`active`, false)).BuildWithFlavor(sqlbuilder.PostgreSQL)
+	updateQ, updateArgs := update.Update(`hr.payrolls`).Set(update.Assign(`active`, false)).BuildWithFlavor(sqlbuilder.PostgreSQL)
 
 	tx, err := repo.deps.DB.BeginTxx(ctx, nil)
 	if err != nil {
@@ -90,4 +90,33 @@ func (repo *PayrollRepository) IsPayrollCreated(ctx context.Context, periodID st
 	}
 
 	return true, nil
+}
+
+func (repo *PayrollRepository) StorePayslip(ctx context.Context, payslip models.Payslip) error {
+	// convert reimbursement list to JSON first
+	reimbursementList := `{}`
+	if len(payslip.ReimbursementList) != 0 {
+		dataBytes, err := json.Marshal(payslip.ReimbursementList)
+		if err != nil {
+			repo.deps.Logger.ErrorContext(ctx, "failed to marshal reimbursement list to payslip", slog.Any("error", err))
+			return err
+		}
+		reimbursementList = string(dataBytes)
+	}
+
+	sq := sqlbuilder.NewInsertBuilder()
+	sq.InsertInto(`hr.payslips`).
+		Cols(`id`, `payroll_id`, `user_id`, `base_salary`, `attendance_days`, `total_work_days`, `overtime_hours`, `overtime_bonus`, `reimbursement_list`, `total_reimbursement`, `take_home_pay`, `created_at`).
+		Values(payslip.ID, payslip.PayrollID, payslip.UserID, payslip.BaseSalary, payslip.TotalAttendance, payslip.TotalWorkDay, payslip.TotalOvertimeHour, payslip.OvertimePay, reimbursementList, payslip.TotalReimbursement, payslip.TakeHomePay, `now()`)
+
+	q, args := sq.BuildWithFlavor(sqlbuilder.PostgreSQL)
+
+	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)
+
+	_, err := tx.ExecContext(ctx, q, args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

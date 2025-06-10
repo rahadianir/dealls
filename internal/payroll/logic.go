@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
+	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rahadianir/dealls/internal/attendance"
 	"github.com/rahadianir/dealls/internal/config"
 	"github.com/rahadianir/dealls/internal/models"
@@ -44,7 +47,14 @@ func (logic *PayrollLogic) SetPayrollPeriod(ctx context.Context, start time.Time
 		return xerror.AuthError{Err: fmt.Errorf("admin only operation")}
 	}
 
-	err = logic.payrollRepo.SetPayrollPeriod(ctx, start, end)
+	totalWorkDay := calculateWorkingDays(start, end)
+
+	err = logic.payrollRepo.SetPayrollPeriod(ctx, PayrollPeriod{
+		ID:            uuid.NewString(),
+		StartDate:     start,
+		EndDate:       end,
+		TotalWorkDays: totalWorkDay,
+	})
 	if err != nil {
 		logic.deps.Logger.ErrorContext(ctx, "failed to set payroll period", slog.Any("error", err))
 		return err
@@ -106,14 +116,24 @@ func (logic *PayrollLogic) CalculatePayroll(ctx context.Context) error {
 			return err
 		}
 
-		// compile all active users in the period
+		// compile all active users and other related data in the period
+		// count total work day in the period
+		totalWorkDay := calculateWorkingDays(period.StartDate, period.EndDate)
+
+		// setup map to store all payroll related data
 		activeUserMap := make(map[string]PayrollCalculationData)
+
+		// setup list to store all active user IDs (user that worked in the active payroll period)
 		activeUserList := []string{}
 
+		// populate payroll and active user data with attendance data
 		for _, att := range usersAttendances {
 			_, ok := activeUserMap[att.UserID]
 			if !ok {
 				activeUserMap[att.UserID] = PayrollCalculationData{
+					UserID:          att.UserID,
+					PayrollID:       period.ID,
+					TotalWorkDay:    totalWorkDay,
 					AttendanceCount: att.Count,
 				}
 				activeUserList = append(activeUserList, att.UserID)
@@ -121,10 +141,14 @@ func (logic *PayrollLogic) CalculatePayroll(ctx context.Context) error {
 
 		}
 
+		// populate payroll and active user data with overtime data
 		for _, ovt := range usersOvertimes {
 			activeData, ok := activeUserMap[ovt.UserID]
 			if !ok {
 				activeUserMap[ovt.UserID] = PayrollCalculationData{
+					UserID:             ovt.UserID,
+					PayrollID:          period.ID,
+					TotalWorkDay:       totalWorkDay,
 					OvertimeHoursCount: ovt.Count,
 				}
 				activeUserList = append(activeUserList, ovt.UserID)
@@ -134,15 +158,29 @@ func (logic *PayrollLogic) CalculatePayroll(ctx context.Context) error {
 			}
 		}
 
+		// populate payroll and active user data with reimbursement data
 		for _, reimbursement := range usersReimbursements {
 			activeData, ok := activeUserMap[reimbursement.UserID]
 			if !ok {
 				activeUserMap[reimbursement.UserID] = PayrollCalculationData{
-					Reimbursements: []models.Reimbursement{reimbursement},
+					UserID:       reimbursement.UserID,
+					PayrollID:    period.ID,
+					TotalWorkDay: totalWorkDay,
+					Reimbursements: []Reimbursement{
+						{
+							ID:     reimbursement.ID,
+							Amount: reimbursement.Amount,
+							Desc:   reimbursement.Description,
+						},
+					},
 				}
 				activeUserList = append(activeUserList, reimbursement.UserID)
 			} else {
-				activeData.Reimbursements = append(activeData.Reimbursements, reimbursement)
+				activeData.Reimbursements = append(activeData.Reimbursements, Reimbursement{
+					ID:     reimbursement.ID,
+					Amount: reimbursement.Amount,
+					Desc:   reimbursement.Description,
+				})
 				activeUserMap[reimbursement.UserID] = activeData
 			}
 		}
@@ -154,7 +192,7 @@ func (logic *PayrollLogic) CalculatePayroll(ctx context.Context) error {
 			return err
 		}
 
-		// input users salary on calculation data pool
+		// populate payroll and active user data with salary data
 		for _, salary := range userSalaries {
 			activeData, ok := activeUserMap[salary.UserID]
 			if !ok {
@@ -177,6 +215,48 @@ func (logic *PayrollLogic) CalculatePayroll(ctx context.Context) error {
 		// 	fmt.Println("reimbursement list: ", data.Reimbursements)
 		// }
 
+		// setup worker to calculate payroll
+		// setup wait group for flow control
+		var wg sync.WaitGroup
+
+		// setup channel to pass the calculation data and result
+		jobChan := make(chan PayrollCalculationData)
+		payslipChan := make(chan models.Payslip)
+
+		// spawn worker to consume data and process calculation
+		for i := 0; i < 20; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for job := range jobChan {
+					payslipChan <- logic.CalculatePay(ctx, job)
+				}
+			}()
+		}
+
+		// feed data through channel
+		go func() {
+			for _, data := range activeUserMap {
+				jobChan <- data
+			}
+			close(jobChan)
+		}()
+
+		// spawn worker that receives calculation result
+		// and store it to database
+		go func() {
+			for payslip := range payslipChan {
+				err := logic.payrollRepo.StorePayslip(ctx, payslip)
+				if err != nil {
+					logic.deps.Logger.ErrorContext(ctx, "failed to store payslip data", slog.Any("error", err))
+					return
+				}
+			}
+		}()
+
+		wg.Wait()
+		close(payslipChan)
+
 		return nil
 	})
 	if err != nil {
@@ -187,7 +267,66 @@ func (logic *PayrollLogic) CalculatePayroll(ctx context.Context) error {
 	return nil
 }
 
-func (logic *PayrollLogic) CalculateSalary(ctx context.Context, userID string, attendanceCount int) {}
+func (logic *PayrollLogic) CalculatePay(ctx context.Context, data PayrollCalculationData) models.Payslip {
+	payslip := models.Payslip{
+		ID:                uuid.NewString(),
+		UserID:            data.UserID,
+		PayrollID:         data.PayrollID,
+		BaseSalary:        data.Salary,
+		TotalAttendance:   data.AttendanceCount,
+		TotalWorkDay:      data.TotalWorkDay,
+		TotalOvertimeHour: data.OvertimeHoursCount,
+	}
 
-func (logic *PayrollLogic) CalculateOvertime(ctx context.Context, userID string, overtimeHourCount int) {
+	// calculate prorated salary = (total attendance / total work day) * salary
+	salary := float64(data.AttendanceCount/data.TotalWorkDay) * (data.Salary)
+
+	// calculate overtime pay = prorated salary per hour * overtime hour
+	overtime := (data.Salary / float64(data.TotalWorkDay) / 8) * float64(data.OvertimeHoursCount)
+
+	// calculate reimbursement
+	var reimburseAmount float64
+	for _, r := range data.Reimbursements {
+		reimburseAmount += r.Amount
+		payslip.ReimbursementList = append(payslip.ReimbursementList, models.Reimbursement{
+			ID:          r.ID,
+			Amount:      r.Amount,
+			Description: r.Desc,
+		})
+	}
+
+	payslip.TakeHomePay = salary + overtime + reimburseAmount
+
+	return payslip
+}
+
+func calculateWorkingDays(startTime time.Time, endTime time.Time) int {
+	// Reduce dates to previous Mondays
+	startOffset := weekday(startTime)
+	startTime = startTime.AddDate(0, 0, -startOffset)
+	endOffset := weekday(endTime)
+	endTime = endTime.AddDate(0, 0, -endOffset)
+
+	// Calculate weeks and days
+	dif := endTime.Sub(startTime)
+	weeks := int(math.Round((dif.Hours() / 24) / 7))
+	days := -min(startOffset, 5) + min(endOffset, 5)
+
+	// Calculate total days
+	return weeks*5 + days
+}
+
+func weekday(d time.Time) int {
+	wd := d.Weekday()
+	if wd == time.Sunday {
+		return 6
+	}
+	return int(wd) - 1
+}
+
+func min(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

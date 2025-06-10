@@ -10,10 +10,10 @@ type SQLReimbursement struct {
 }
 
 type Reimbursement struct {
-	ID          string
-	UserID      string
-	Amount      float64
-	Description string
+	ID          string  `json:"id"`
+	UserID      string  `json:"user_id"`
+	Amount      float64 `json:"amount"`
+	Description string  `json:"description"`
 }
 
 type Payslip struct {

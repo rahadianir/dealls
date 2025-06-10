@@ -1,16 +1,3 @@
-CREATE TABLE IF NOT EXISTS "hr"."attendance_periods" (
-    "id" UUID PRIMARY KEY,
-    "start_date" DATE NOT NULL,
-    "end_date" DATE NOT NULL,
-    "active" BOOL DEFAULT true,
-    "created_at" TIMESTAMPTZ NOT NULL,
-    "updated_at" TIMESTAMPTZ,
-    "deleted_at" TIMESTAMPTZ,
-    "created_by" VARCHAR DEFAULT 'admin',
-    "updated_by" VARCHAR,
-    CONSTRAINT only_1_active UNIQUE (active)
-);
-
 CREATE TABLE IF NOT EXISTS "hr"."attendances" (
     "id" UUID PRIMARY KEY,
     "user_id" UUID NOT NULL,

@@ -1,16 +1,18 @@
 CREATE TABLE IF NOT EXISTS "hr"."payrolls" (
     "id" UUID PRIMARY KEY,
-    "period_id" UUID NOT NULL,
+    "start_date" DATE NOT NULL,
+    "end_date" DATE NOT NULL,
     "total_work_days" INTEGER NOT NULL,
-    "total_salary_paid" DECIMAL(15,2) NOT NULL,
+    "active" BOOL DEFAULT true,
+    "total_salary_paid" DECIMAL(15,2) DEFAULT 0,
+    "processed" BOOL DEFAULT false,
     "created_at" TIMESTAMPTZ NOT NULL,
     "updated_at" TIMESTAMPTZ,
     "deleted_at" TIMESTAMPTZ,
     "created_by" VARCHAR DEFAULT 'admin',
     "updated_by" VARCHAR,
-    CONSTRAINT fk_payroll_period_id
-        FOREIGN KEY (period_id)
-        REFERENCES hr.attendance_periods (id)
+    CONSTRAINT only_1_active UNIQUE (active)
+    
 );
 
 CREATE TABLE IF NOT EXISTS "hr"."payslips" (
