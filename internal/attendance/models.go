@@ -1,14 +1,18 @@
 package attendance
 
 type AttendanceRequest struct {
-	UserID string `json:"user_id"`
+	UserID    string `json:"user_id"`
+	Timestamp string `json:"timestamp"`
 }
 
 type OvertimeRequest struct {
-	Hours int
+	UserID    string `json:"user_id"`
+	Hours     int    `json:"hours"`
+	Timestamp string `json:"timestamp"`
 }
 
 type ReimbursementRequest struct {
-	Amount      float64
-	Description string
+	UserID      string  `json:"user_id"`
+	Amount      float64 `json:"amount"`
+	Description string  `json:"description"`
 }

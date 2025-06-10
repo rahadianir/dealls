@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/google/uuid"
-	"github.com/rahadianir/dealls/internal/config"
+	"github.com/rahadianir/dealls/internal/pkg/xcontext"
 )
 
 var reqID uint64
@@ -28,14 +28,14 @@ func (tracer *TracerMiddleware) Tracer(next http.Handler) http.Handler {
 			myid := atomic.AddUint64(&reqID, 1)
 			requestID = fmt.Sprintf("%s-%06d", prefix, myid)
 		}
-		ctx = context.WithValue(ctx, config.RequestIDKey, requestID)
+		ctx = context.WithValue(ctx, xcontext.RequestIDKey, requestID)
 
 		// setup real IP
 		ip := getRealIP(r)
 		if ip == "" {
 			ip = r.RemoteAddr
 		}
-		ctx = context.WithValue(ctx, config.IPKey, ip)
+		ctx = context.WithValue(ctx, xcontext.IPKey, ip)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

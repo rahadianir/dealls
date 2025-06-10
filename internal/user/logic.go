@@ -26,30 +26,38 @@ func NewUserLogic(deps *config.CommonDependencies, userRepo UserRepository, jwtH
 	}
 }
 
-func (logic *UserLogic) Login(ctx context.Context, username string, password string) (string, error) {
+func (logic *UserLogic) Login(ctx context.Context, username string, password string) (LoginResponse, error) {
 	userDetails, err := logic.userRepo.GetUserDetailsByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, xerror.ErrDataNotFound) {
 			logic.deps.Logger.WarnContext(ctx, "username not found", slog.Any("error", err))
-			return "", err
+			return LoginResponse{}, err
 		}
 
-		return "", err
+		return LoginResponse{}, err
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(userDetails.Password), []byte(password))
 	if err != nil {
 		logic.deps.Logger.WarnContext(ctx, "invalid password", slog.Any("error", err))
-		return "", xerror.ClientError{Err: fmt.Errorf("invalid password")}
+		return LoginResponse{}, xerror.ClientError{Err: fmt.Errorf("invalid password")}
 	}
 
-	token, err := logic.jwtHelper.GenerateJWT(logic.deps.Config.App.Name, userDetails.ID, logic.deps.Config.App.ExpiryTime, logic.deps.Config.App.SecretKey)
+	token, err := logic.jwtHelper.GenerateJWT(logic.deps.Config.App.Name, userDetails.ID, logic.deps.Config.App.ExpiryTime, logic.deps.Config.App.JWTSecretKey)
 	if err != nil {
 		logic.deps.Logger.ErrorContext(ctx, "failed to generate JWT", slog.Any("error", err))
-		return token, err
+		return LoginResponse{}, err
 	}
 
-	return token, nil
+	result := LoginResponse{
+		Token: token,
+	}
+
+	if logic.deps.Config.App.IsDebug {
+		result.UserID = userDetails.ID
+	}
+
+	return result, nil
 }
 
 func (logic *UserLogic) IsAdmin(ctx context.Context, userID string) (bool, error) {

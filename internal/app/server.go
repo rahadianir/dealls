@@ -35,6 +35,12 @@ func StartServer() {
 	}
 	defer db.Close()
 
+	err = db.Ping()
+	if err != nil {
+		logger.ErrorContext(ctx, "failed to ping db connection", slog.Any("error", err))
+		os.Exit(1)
+	}
+
 	deps := config.CommonDependencies{
 		Config: cfg,
 		DB:     db,
@@ -68,14 +74,21 @@ func initRoutes(ctx context.Context, deps *config.CommonDependencies) http.Handl
 	userHandler := user.NewUserHandler(deps, *userLogic)
 	attHandler := attendance.NewAttendanceHandler(deps, *attLogic)
 
+	// setup middlewares
+	authMW := middleware.NewAuthMiddleware(deps, &jwtHelper)
+	traceMW := middleware.TracerMiddleware{}
 	r := chi.NewRouter()
 
-	traceMW := middleware.TracerMiddleware{}
 	r.Use(traceMW.Tracer)
 
 	r.Post("/login", userHandler.Login)
 
-	r.Post("/attendance", attHandler.SubmitAttendance)
+	r.Group(func(r chi.Router) {
+		r.Use(authMW.AuthOnly) // check whether the user is logged in and embed user id in context
+		r.Post("/attendance", attHandler.SubmitAttendance)
+		r.Post("/overtime", attHandler.SubmitOvertime)
+		r.Post("/reimbursement", attHandler.SubmitReimbursement)
+	})
 
 	return r
 }

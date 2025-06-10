@@ -31,7 +31,7 @@ func (handler *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := handler.userLogic.Login(r.Context(), payload.Username, payload.Password)
+	result, err := handler.userLogic.Login(r.Context(), payload.Username, payload.Password)
 	if err != nil {
 		xhttp.SendJSONResponse(w, xhttp.BaseResponse{
 			Error:   err.Error(),
@@ -42,8 +42,6 @@ func (handler *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	xhttp.SendJSONResponse(w, xhttp.BaseResponse{
 		Message: "login success",
-		Data: LoginResponse{
-			Token: token,
-		},
+		Data:    result,
 	}, http.StatusOK)
 }

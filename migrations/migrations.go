@@ -23,15 +23,6 @@ func SetupData() {
 
 }
 
-func generateRandomString(length int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
-	result := make([]byte, length)
-	for i := range result {
-		result[i] = letters[rand.IntN(len(letters))]
-	}
-	return string(result)
-}
-
 func generateRandomName(length int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyz"
 	result := make([]byte, rand.IntN(length)+1)
@@ -44,6 +35,7 @@ func generateRandomName(length int) string {
 func generateMockData(db *sqlx.DB) {
 	tx, err := db.Begin()
 	if err != nil {
+		log.Fatal("failed to start db transaction: ", err)
 	}
 	defer tx.Rollback()
 
@@ -57,6 +49,7 @@ func generateMockData(db *sqlx.DB) {
 	}
 
 	// insert admin user
+	log.Println("inserting admin data")
 	adminPassword := os.Getenv("DEFAULT_ADMIN_PASSWORD")
 	userID := uuid.New()
 	salary := rand.Int64N(100000000)
@@ -81,9 +74,10 @@ func generateMockData(db *sqlx.DB) {
 	}
 
 	for i := 1; i <= 100; i++ {
+		log.Println("inserting fake employee data: ", i)
 		id := uuid.New()
 		name := generateRandomName(20)
-		password := generateRandomString(8)
+		password := "password" // static password for easier use to test
 		salary := rand.Int64N(100000000)
 
 		pwBytes, err := bcrypt.GenerateFromPassword([]byte(password), 12)

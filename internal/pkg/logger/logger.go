@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/rahadianir/dealls/internal/config"
+	"github.com/rahadianir/dealls/internal/pkg/xcontext"
 )
 
 type CustomHandler struct {
@@ -32,7 +32,7 @@ func InitLogger() *slog.Logger {
 }
 
 func (h *CustomHandler) Handle(ctx context.Context, r slog.Record) error {
-	if reqID, ok := ctx.Value(config.RequestIDKey).(string); ok {
+	if reqID, ok := ctx.Value(xcontext.RequestIDKey).(string); ok {
 		r.AddAttrs(slog.String("request_id", reqID))
 	}
 	return h.handler.Handle(ctx, r)
