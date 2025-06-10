@@ -73,18 +73,33 @@ func generateMockData(db *sqlx.DB) {
 		log.Fatal("failed to assign admin role to admin user: ", err)
 	}
 
+	// prepare 3 static employee data for testing
+	password := "password" // static password for easier use to test
+	pwBytes, err = bcrypt.GenerateFromPassword([]byte(password), 12)
+	if err != nil {
+		log.Fatal("failed to hash test user password: ", err)
+	}
+
+	// static UUID for testing
+	id1 := "81d1bcd4-d5b3-4495-92ce-ef2c9b0f5e54"
+	id2 := "8f29acd8-c18a-4e1c-9662-f102562bc893"
+	id3 := "cc3a57a3-79cf-438e-9dc3-3a18bd86480b"
+
+	// inserting 3 static employee data for testing
+	q = `INSERT INTO hr.users (id, name, username, password, salary, created_at) VALUES 
+	($1, 'ani', 'ani', $4, 10000000, now()),
+	($2, 'budi', 'budi', $4, 13000000, now()),
+	($3, 'coki', 'coki', $4, 17000000, now())`
+	_, err = tx.Exec(q, id1, id2, id3, string(pwBytes))
+	if err != nil {
+		log.Fatal("failed to insert static employee data: ", err)
+	}
+
 	for i := 1; i <= 100; i++ {
 		log.Println("inserting fake employee data: ", i)
 		id := uuid.New()
 		name := generateRandomName(20)
-		password := "password" // static password for easier use to test
 		salary := rand.Int64N(100000000)
-
-		pwBytes, err := bcrypt.GenerateFromPassword([]byte(password), 12)
-		if err != nil {
-			log.Println("failed to hash password")
-			continue
-		}
 
 		q := `INSERT INTO hr.users (id, name, username, password, salary, created_at) VALUES ($1, $2, $2, $3, $4, now())`
 		_, err = tx.Exec(q, id, name, string(pwBytes), salary)
