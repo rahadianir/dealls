@@ -85,24 +85,6 @@ func (repo *PayrollRepository) GetActivePayrollPeriod(ctx context.Context) (Payr
 	return result, nil
 }
 
-func (repo *PayrollRepository) IsPayrollCreated(ctx context.Context, periodID string) (bool, error) {
-	q := `SELECT 1 FROM hr.payrolls WHERE period_id = $1`
-
-	tx := dbhelper.ExtractTx(ctx, repo.deps.DB)
-
-	var result sql.NullInt64
-	err := tx.QueryRowxContext(ctx, q, periodID).Scan(&result)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	return true, nil
-}
-
 func (repo *PayrollRepository) StorePayslip(ctx context.Context, payslip models.Payslip) error {
 	// convert reimbursement list to JSON first
 	reimbursementList := `{}`
@@ -185,7 +167,7 @@ func (repo *PayrollRepository) GetPayslipsSummary(ctx context.Context, payrollID
 
 func (repo *PayrollRepository) GetUserPayslipByID(ctx context.Context, userID string, payrollID string) (models.Payslip, error) {
 	sq := sqlbuilder.NewSelectBuilder()
-	sq.Select(`p.id`, `u.name`, `user_id`, `p.base_salary`, `attendance_days`, `total_work_days`, `overtime_hours`, `overtime_bonus`, `reimbursement_list`, `total_reimbursement`, `take_home_pay`).
+	sq.Select(`p.id`, `p.payroll_id`, `u.name`, `user_id`, `p.base_salary`, `attendance_days`, `total_work_days`, `overtime_hours`, `overtime_bonus`, `reimbursement_list`, `total_reimbursement`, `take_home_pay`).
 		From(`hr.payslips p`).Join(`hr.users u`, `p.user_id = u.id`).Where(
 		sq.And(
 			sq.Equal(`user_id`, userID),

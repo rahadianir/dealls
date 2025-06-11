@@ -13,11 +13,11 @@ import (
 
 type AttendanceLogic struct {
 	deps    *config.CommonDependencies
-	attRepo AttendanceRepository
+	attRepo AttendanceRepositoryInterface
 	today   time.Time // putting it here so it's easier to be mocked/tested
 }
 
-func NewAttendanceLogic(deps *config.CommonDependencies, attRepo AttendanceRepository) *AttendanceLogic {
+func NewAttendanceLogic(deps *config.CommonDependencies, attRepo AttendanceRepositoryInterface) *AttendanceLogic {
 	return &AttendanceLogic{
 		deps:    deps,
 		attRepo: attRepo,

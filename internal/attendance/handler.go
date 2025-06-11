@@ -10,10 +10,10 @@ import (
 
 type AttendanceHandler struct {
 	deps     *config.CommonDependencies
-	attLogic AttendanceLogic
+	attLogic AttendanceLogicInterface
 }
 
-func NewAttendanceHandler(deps *config.CommonDependencies, attLogic AttendanceLogic) *AttendanceHandler {
+func NewAttendanceHandler(deps *config.CommonDependencies, attLogic AttendanceLogicInterface) *AttendanceHandler {
 	return &AttendanceHandler{
 		deps:     deps,
 		attLogic: attLogic,

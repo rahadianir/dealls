@@ -14,11 +14,11 @@ import (
 
 type UserLogic struct {
 	deps      *config.CommonDependencies
-	userRepo  UserRepository
+	userRepo  UserRepositoryInterface
 	jwtHelper xjwt.JWTHelper
 }
 
-func NewUserLogic(deps *config.CommonDependencies, userRepo UserRepository, jwtHelper xjwt.JWTHelper) *UserLogic {
+func NewUserLogic(deps *config.CommonDependencies, userRepo UserRepositoryInterface, jwtHelper xjwt.JWTHelper) *UserLogic {
 	return &UserLogic{
 		deps:      deps,
 		userRepo:  userRepo,
@@ -54,33 +54,4 @@ func (logic *UserLogic) Login(ctx context.Context, username string, password str
 	}
 
 	return result, nil
-}
-
-func (logic *UserLogic) IsAdmin(ctx context.Context, userID string) (bool, error) {
-	// get user roles
-	roleIDs, err := logic.userRepo.GetUserRolesbyID(ctx, userID)
-	if err != nil {
-		if errors.Is(err, xerror.ErrDataNotFound) {
-			logic.deps.Logger.WarnContext(ctx, "user has no role", slog.Any("error", err))
-			return false, nil
-		}
-		logic.deps.Logger.ErrorContext(ctx, "failed to get user roles by id", slog.Any("error", err))
-		return false, err
-	}
-
-	// get admin role
-	adminRoleID, err := logic.userRepo.GetAdminRole(ctx)
-	if err != nil {
-		logic.deps.Logger.ErrorContext(ctx, "failed to fetch admin role ID", slog.Any("error", err))
-		return false, err
-	}
-
-	// match user roles with admin role
-	for _, id := range roleIDs {
-		if id == adminRoleID {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }

@@ -10,10 +10,10 @@ import (
 
 type PayrollHandler struct {
 	deps         *config.CommonDependencies
-	payrollLogic PayrollLogic
+	payrollLogic PayrollLogicInterface
 }
 
-func NewPayrollHandler(deps *config.CommonDependencies, payrollLogic PayrollLogic) *PayrollHandler {
+func NewPayrollHandler(deps *config.CommonDependencies, payrollLogic PayrollLogicInterface) *PayrollHandler {
 	return &PayrollHandler{
 		deps:         deps,
 		payrollLogic: payrollLogic,

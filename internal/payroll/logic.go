@@ -20,12 +20,12 @@ import (
 
 type PayrollLogic struct {
 	deps        *config.CommonDependencies
-	payrollRepo PayrollRepository
-	userRepo    user.UserRepository
-	attRepo     attendance.AttendanceRepository
+	payrollRepo PayrollRepositoryInterface
+	userRepo    user.UserRepositoryInterface
+	attRepo     attendance.AttendanceRepositoryInterface
 }
 
-func NewPayrollLogic(deps *config.CommonDependencies, payrollRepo PayrollRepository, userRepo user.UserRepository, attRepo attendance.AttendanceRepository) *PayrollLogic {
+func NewPayrollLogic(deps *config.CommonDependencies, payrollRepo PayrollRepositoryInterface, userRepo user.UserRepositoryInterface, attRepo attendance.AttendanceRepositoryInterface) *PayrollLogic {
 	return &PayrollLogic{
 		deps:        deps,
 		payrollRepo: payrollRepo,
@@ -48,6 +48,9 @@ func (logic *PayrollLogic) SetPayrollPeriod(ctx context.Context, start time.Time
 	}
 
 	totalWorkDay := calculateWorkingDays(start, end)
+	if totalWorkDay <= 0 {
+		return xerror.ClientError{Err: fmt.Errorf("invalid start and end time for payroll period")}
+	}
 
 	err = logic.payrollRepo.SetPayrollPeriod(ctx, PayrollPeriod{
 		ID:            uuid.NewString(),
@@ -332,6 +335,7 @@ func (logic *PayrollLogic) GetPayrollsSummary(ctx context.Context) (PayslipSumma
 			Name:        slip.Name,
 		})
 	}
+	response.PayrollID = period.ID
 	response.TotalTakeHomePay = period.TotalSalaryPaid
 
 	return response, nil

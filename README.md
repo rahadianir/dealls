@@ -29,7 +29,7 @@ It handles employee attendance, overtime, reimbursements, and generates payroll 
 To run this project, make sure you have the following installed:
 
 - **[Go 1.24+](https://go.dev/dl/)**  
-- **[golang-migrate](https://github.com/golang-migrate/migrate)** – for database migrations  
+- **[golang-migrate (postgresql driver)](https://github.com/golang-migrate/migrate)** – for database migrations  
 - **[Docker & Docker Compose](https://docs.docker.com/compose/)** – for local development setup
 
 ---

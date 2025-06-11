@@ -10,10 +10,10 @@ import (
 
 type UserHandler struct {
 	deps      *config.CommonDependencies
-	userLogic UserLogic
+	userLogic UserLogicInterface
 }
 
-func NewUserHandler(deps *config.CommonDependencies, userLogic UserLogic) *UserHandler {
+func NewUserHandler(deps *config.CommonDependencies, userLogic UserLogicInterface) *UserHandler {
 	return &UserHandler{
 		deps:      deps,
 		userLogic: userLogic,

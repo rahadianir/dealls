@@ -90,7 +90,7 @@ func StartServer() {
 func initRoutes(deps *config.CommonDependencies) http.Handler {
 	// wiring layers
 	// shared packages
-	jwtHelper := xjwt.XJWT{}
+	jwtHelper := &xjwt.XJWT{}
 
 	// repository
 	userRepo := user.NewUserRepository(deps)
@@ -98,17 +98,17 @@ func initRoutes(deps *config.CommonDependencies) http.Handler {
 	payrollRepo := payroll.NewPayrollRepository(deps)
 
 	// logic
-	userLogic := user.NewUserLogic(deps, *userRepo, &jwtHelper)
-	attLogic := attendance.NewAttendanceLogic(deps, *attRepo)
-	payrollLogic := payroll.NewPayrollLogic(deps, *payrollRepo, *userRepo, *attRepo)
+	userLogic := user.NewUserLogic(deps, userRepo, jwtHelper)
+	attLogic := attendance.NewAttendanceLogic(deps, attRepo)
+	payrollLogic := payroll.NewPayrollLogic(deps, payrollRepo, userRepo, attRepo)
 
 	// handler
-	userHandler := user.NewUserHandler(deps, *userLogic)
-	attHandler := attendance.NewAttendanceHandler(deps, *attLogic)
-	payrollHandler := payroll.NewPayrollHandler(deps, *payrollLogic)
+	userHandler := user.NewUserHandler(deps, userLogic)
+	attHandler := attendance.NewAttendanceHandler(deps, attLogic)
+	payrollHandler := payroll.NewPayrollHandler(deps, payrollLogic)
 
 	// setup middlewares
-	authMW := middleware.NewAuthMiddleware(deps, &jwtHelper)
+	authMW := middleware.NewAuthMiddleware(deps, jwtHelper)
 	traceMW := middleware.TracerMiddleware{}
 	r := chi.NewRouter()
 

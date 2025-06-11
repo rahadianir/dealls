@@ -51,7 +51,7 @@ func generateMockData(db *sqlx.DB) {
 	// insert admin user
 	log.Println("inserting admin data")
 	adminPassword := os.Getenv("DEFAULT_ADMIN_PASSWORD")
-	userID := uuid.New()
+	adminID := "46bf7246-6186-45cc-aa7f-2c7fd8b32c81"
 	salary := rand.Int64N(100000000)
 
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(adminPassword), 12)
@@ -60,7 +60,7 @@ func generateMockData(db *sqlx.DB) {
 	}
 
 	q = `INSERT INTO hr.users (id, name, username, password, salary, created_at) VALUES ($1, $2, $2, $3, $4, now())`
-	_, err = tx.Exec(q, userID, "admin", string(pwBytes), salary)
+	_, err = tx.Exec(q, adminID, "admin", string(pwBytes), salary)
 	if err != nil {
 		log.Fatal("failed to insert admin data: ", err)
 	}
@@ -68,7 +68,7 @@ func generateMockData(db *sqlx.DB) {
 	// assign admin role to admin user
 	mapID := uuid.New()
 	q = `INSERT INTO hr.user_role_map (id, user_id, role_id, created_at) VALUES ($1, $2, $3, now())`
-	_, err = tx.Exec(q, mapID, userID, roleID)
+	_, err = tx.Exec(q, mapID, adminID, roleID)
 	if err != nil {
 		log.Fatal("failed to assign admin role to admin user: ", err)
 	}

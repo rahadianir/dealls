@@ -79,6 +79,7 @@ type PayslipResponse struct {
 	Name        string  `json:"name"`
 }
 type PayslipSummaryResponse struct {
+	PayrollID        string            `json:"payroll_id"`
 	TotalTakeHomePay float64           `json:"total_take_home_pay"`
 	Payslips         []PayslipResponse `json:"payslips"`
 }
