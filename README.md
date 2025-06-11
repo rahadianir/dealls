@@ -22,11 +22,11 @@ It handles employee attendance, overtime, reimbursements, and generates payroll 
 - Database migration support
 - Dockerized environment
 
+---
+
 ## Architecture
 
 The architecture documentation can be read [here!](doc/ARCHITECTURE.md) (doc/ARCHITECTURE.md)
-
----
 
 ---
 
