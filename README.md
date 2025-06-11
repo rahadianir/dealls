@@ -10,7 +10,7 @@ It handles employee attendance, overtime, reimbursements, and generates payroll 
 
 ## Features
 
-- REST API with OpenAPI 3 support
+- REST API
 - Modular architecture (handler → logic → repository)
 - Payroll generation based on:
   - Attendance records
@@ -21,6 +21,12 @@ It handles employee attendance, overtime, reimbursements, and generates payroll 
 - Clean separation of logic and infrastructure
 - Database migration support
 - Dockerized environment
+
+## Architecture
+
+The architecture documentation can be read [here!](doc/ARCHITECTURE.md) (doc/ARCHITECTURE.md)
+
+---
 
 ---
 
@@ -172,6 +178,7 @@ curl --request POST \
 - `amount` value denotes how much is the amount requested.
 - `description` value denotes the description for the reimbursement request.
 > **_NOTE 1:_**  There is a TODO list to make this operation can be done only by the user itself and admin, by comparing the user ID in the body and the payload of the access token. But for now, the security measure done is just whether the request has valid access token.
+
 > **_NOTE 2:_**  I don't use timestamp here because usually reimbursement is processed by when the request is made, instead of when the payment that is needed to be reimbursed is done.
 
 ### 6. Calculate Payroll
@@ -226,6 +233,7 @@ The response will contain how much the sum of the take home pay paid to employee
 }
 ```
 > **_NOTE 1:_**  This operation can only be done by admin. So use the admin's token you got from step 1.
+
 > **_NOTE 2:_**  There is a TODO list to give this endpoint parameter to choose which payroll period to get the summary from. But for now, it can only be used to get the summary of the active payroll period.
 
 ### 8. Get User Payslips
